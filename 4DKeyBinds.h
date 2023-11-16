@@ -140,8 +140,17 @@ namespace KeyBinds
 {
     using BindCallback = std::add_pointer<void(GLFWwindow* window, int action, int mods)>::type;
 
-    inline bool IsLoaded()
-    {
+    inline bool IsLoaded() {
+
+        // wait for at most 2s for 4DKeyBinds.dll to load, in case we are loaded before it.
+        // This is a one-time wait, due to the static
+        static int i = 0;
+        while (GetModuleHandleA("4DKeyBinds.dll") == nullptr) {
+            if (i++>200)
+                break;
+            Sleep(10);
+        }
+        
         return GetModuleHandleA("4DKeyBinds.dll") != nullptr;
     }
 
