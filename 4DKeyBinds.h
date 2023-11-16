@@ -140,8 +140,16 @@ namespace KeyBinds
 {
     using BindCallback = std::add_pointer<void(GLFWwindow* window, int action, int mods)>::type;
 
-    inline bool IsLoaded()
-    {
+    inline bool IsLoaded() {
+        
+        // why do I have to do this Tr1Ngle?? Why?????
+        static int i = 0;
+        while (GetModuleHandleA("4DKeyBinds.dll") == nullptr) {
+            if (i++>200)
+                break;
+            Sleep(10);
+        }
+        
         return GetModuleHandleA("4DKeyBinds.dll") != nullptr;
     }
 
