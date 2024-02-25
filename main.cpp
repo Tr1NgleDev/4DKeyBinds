@@ -232,10 +232,9 @@ void keybindButtonCallback(void* user)
 	curChangingBind = pair;
 }
 
-void(__thiscall* StateSettings_init)(StateSettings* self, StateManager& s);
-void __fastcall StateSettings_init_H(StateSettings* self, StateManager& s)
+$hook(void, StateSettings, init, StateManager& s)
 {
-	StateSettings_init(self, s);
+	original(self, s);
 
 	curChangingBind = nullptr;
 
@@ -330,8 +329,7 @@ bool isConflicting(const std::string& bind)
 	return false;
 }
 
-void(__thiscall* StateSettings_render)(StateSettings* self, StateManager& s);
-void __fastcall StateSettings_render_H(StateSettings* self, StateManager& s)
+$hook(void, StateSettings, render, StateManager& s)
 {
 	if(self->controlsMenuOpened)
 	{
@@ -360,7 +358,7 @@ void __fastcall StateSettings_render_H(StateSettings* self, StateManager& s)
 			}
 		}
 	}
-	StateSettings_render(self, s);
+	original(self, s);
 }
 
 struct
@@ -376,14 +374,13 @@ void callCallbacks(GLFWwindow* window, int key, int scancode, int action, int mo
 				callback(window, action, mods);
 }
 
-void(__fastcall* keyInput)(GLFWwindow* window, int key, int scancode, int action, int mods);
-void __fastcall keyInput_H(GLFWwindow* window, int key, int scancode, int action, int mods)
+$hookStatic(void, main_cpp, keyCallback, GLFWwindow* window, int key, int scancode, int action, int mods)
 {
 	if (!curChangingBind)
 		callCallbacks(window, key, scancode, action, mods, KeyBindsScope::GLOBAL);
 
 	// im lazy to add hook for StateSettings keyInput
-	if(action == GLFW_PRESS && StateSettings::instanceObj->controlsMenuOpened && curChangingBind)
+	if(action == GLFW_PRESS && fdm::StateSettings::instanceObj->controlsMenuOpened && curChangingBind)
 	{
 		if(!KeyToString((Keys)key).empty() && (Keys)key != Keys::Escape)
 		{
@@ -396,21 +393,19 @@ void __fastcall keyInput_H(GLFWwindow* window, int key, int scancode, int action
 			curChangingBind = nullptr;
 	}
 
-	keyInput(window, key, scancode, action, mods);
+	original(window, key, scancode, action, mods);
 }
 
-void(__thiscall* StateGame_keyInput)(StateGame* self, StateManager& s, int key, int scancode, int action, int mods);
-void __fastcall StateGame_keyInput_H(StateGame* self, StateManager& s, int key, int scancode, int action, int mods)
+$hook(void, StateGame, keyInput, StateManager& s, int key, int scancode, int action, int mods)
 {
 	callCallbacks(s.window, key, scancode, action, mods, KeyBindsScope::STATEGAME);
-	StateGame_keyInput(self, s, key, scancode, action, mods);
+	original(self, s, key, scancode, action, mods);
 }
 
-void(__thiscall* StateTitleScreen_keyInput)(StateTitleScreen* self, StateManager& s, int key, int scancode, int action, int mods);
-void __fastcall StateTitleScreen_keyInput_H(StateTitleScreen* self, StateManager& s, int key, int scancode, int action, int mods)
+$hook(void, StateTitleScreen, keyInput, StateManager& s, int key, int scancode, int action, int mods)
 {
 	callCallbacks(s.window, key, scancode, action, mods, KeyBindsScope::STATETITLESCREEN);
-	StateTitleScreen_keyInput(self, s, key, scancode, action, mods);
+	original(self, s, key, scancode, action, mods);
 }
 
 $hookByFunc(void, gui::TextInput, Func::gui_Nested::TextInput::keyInput, gui::Window* w, int key, int scancode, int action, int mods)
