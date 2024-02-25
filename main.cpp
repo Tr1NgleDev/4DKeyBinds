@@ -783,6 +783,8 @@ $hook(void, StateTitleScreen, update, StateManager& s, double dt)
 		}
 		else if (closing && !closed)
 		{
+			messageBox.active = false;
+			messageBox.clear();
 			self->ui.removeElement(&messageBox);
 			closed = true;
 		}
