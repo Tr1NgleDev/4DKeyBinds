@@ -181,19 +181,19 @@ void updateConflicts()
 using BindCallback = std::add_pointer<void(GLFWwindow* window, int action, int mods)>::type;
 std::map<KeyBindsScope, std::map<std::string, std::vector<BindCallback>>> bindCallbacks;
 
-extern "C" _declspec(dllexport) void addBind(const char* bindName, int defaultKey, int scope, BindCallback callback)
+extern "C" _declspec(dllexport) void addBind(const std::string& bindName, int defaultKey, int scope, BindCallback callback)
 {
-	keyBinds[(KeyBindsScope)scope][std::string(bindName)] = (Keys)defaultKey;
-	namesOrder[(KeyBindsScope)scope].push_back(std::string(bindName));
-	bindCallbacks[(KeyBindsScope)scope][std::string(bindName)].push_back(callback);
+	keyBinds[(KeyBindsScope)scope][bindName] = (Keys)defaultKey;
+	namesOrder[(KeyBindsScope)scope].push_back(bindName);
+	bindCallbacks[(KeyBindsScope)scope][bindName].push_back(callback);
 }
-extern "C" _declspec(dllexport) void hookBind(const char* bindName, int scope, BindCallback callback)
+extern "C" _declspec(dllexport) void hookBind(const std::string & bindName, int scope, BindCallback callback)
 {
-	bindCallbacks[(KeyBindsScope)scope][std::string(bindName)].push_back(callback);
+	bindCallbacks[(KeyBindsScope)scope][bindName].push_back(callback);
 }
-extern "C" _declspec(dllexport) void triggerBind(const char* bindName, int scope, int action, int mods)
+extern "C" _declspec(dllexport) void triggerBind(const std::string & bindName, int scope, int action, int mods)
 {
-	for (const auto& callback : bindCallbacks[(KeyBindsScope)scope][std::string(bindName)])
+	for (const auto& callback : bindCallbacks[(KeyBindsScope)scope][bindName])
 		callback(nullptr, action, mods);
 }
 
@@ -713,6 +713,9 @@ double easeOutElastic(double x)
 
 $hook(void, StateTitleScreen, init, StateManager& s)
 {
+	glewExperimental = true;
+	glewInit();
+	glfwInit();
 	original(self, s);
 
 	self->ui.viewportCallback = viewportCallbackFunc;

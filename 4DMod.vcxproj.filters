@@ -23,8 +23,5 @@
     <ClInclude Include="GLFWKeys.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="4DKeyBinds.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
   </ItemGroup>
 </Project>
