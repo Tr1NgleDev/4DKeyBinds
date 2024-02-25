@@ -1,11 +1,5 @@
 // #define DEBUG_CONSOLE // Uncomment this if you want a debug console
 
-// Mod Name. Make sure it matches the mod folder's name. Also don't forget to change the output DLL name in Project Properties->General->Target Name
-#define MOD_NAME "4DKeyBinds"
-#define MOD_VER "1.0"
-
-#include <Windows.h>
-#include <cstdio>
 #include <4dm.h>
 
 #include "GLFWKeys.h"
@@ -14,32 +8,12 @@ using namespace fdm;
 
 #include <fstream>
 
+initDLL
+
 template<typename T>
 bool containsVal(const std::vector<T>& vec, const T& value)
 {
 	return std::find(vec.begin(), vec.end(), value) != vec.end();
-}
-
-std::vector<std::string> splitByDelim(const std::string& str, char delim)
-{
-	std::vector<std::string> tokens;
-	size_t pos = 0;
-	size_t len = str.length();
-	tokens.reserve(len / 2); // allocate memory for expected number of tokens
-
-	while (pos < len)
-	{
-		size_t end = str.find_first_of(delim, pos);
-		if (end == std::string::npos)
-		{
-			tokens.emplace_back(str.substr(pos));
-			break;
-		}
-		tokens.emplace_back(str.substr(pos, end - pos));
-		pos = end + 1;
-	}
-
-	return tokens;
 }
 
 std::pair<std::string, std::string> splitBindName(const std::string& str)
@@ -439,17 +413,15 @@ void __fastcall StateTitleScreen_keyInput_H(StateTitleScreen* self, StateManager
 	StateTitleScreen_keyInput(self, s, key, scancode, action, mods);
 }
 
-void(__thiscall* gui_TextInput_keyInput)(gui::TextInput* self, gui::Window* w, int key, int scancode, int action, int mods);
-void __fastcall gui_TextInput_keyInput_H(gui::TextInput* self, gui::Window* w, int key, int scancode, int action, int mods)
+$hookByFunc(void, gui::TextInput, Func::gui_Nested::TextInput::keyInput, gui::Window* w, int key, int scancode, int action, int mods)
 {
 	callCallbacks(w->getGLFWwindow(), key, scancode, action, mods, KeyBindsScope::TEXTINPUT);
-	gui_TextInput_keyInput(self, w, key, scancode, action, mods);
+	original(self, w, key, scancode, action, mods);
 }
 
-bool(__thiscall* Player_keyInput)(Player* self, GLFWwindow* window, World* world, int key, int scancode, int action, int mods);
-bool __fastcall Player_keyInput_H(Player* self, GLFWwindow* window, World* world, int key, int scancode, int action, int mods) 
+$hook(bool, Player, keyInput, GLFWwindow* window, World* world, int key, int scancode, int action, int mods)
 {
-	decltype(Player::keys) keysOld = self->keys;
+	decltype(fdm::Player::keys) keysOld = self->keys;
 	glm::vec4 forward = self->forward;
 	glm::vec4 up = self->up;
 	glm::vec4 left = self->left;
@@ -461,7 +433,7 @@ bool __fastcall Player_keyInput_H(Player* self, GLFWwindow* window, World* world
 	m4::Mat5 orientation = self->orientation;
 	float angleToRotate = self->angleToRotate;
 
-	Player_keyInput(self, window, world, key, scancode, action, mods);
+	original(self, window, world, key, scancode, action, mods);
 	// go fuck yourself. thanks. also sorry people who put some orientation code or keys code in there but no more.
 	self->keys = keysOld;
 	self->forward = forward;
@@ -731,8 +703,6 @@ void messageBoxOkCallback(void* user)
 	closing = true;
 }
 
-bool initializedA = false;
-
 double easeOutElastic(double x)
 {
 	const double c4 = (2.0 * glm::pi<double>()) / 3.0;
@@ -746,69 +716,66 @@ double easeOutElastic(double x)
 		: pow(2.0, -10.0 * x) * sin((x * 10.0 - 0.75) * c4) + 1.0;
 }
 
-void(__thiscall* StateTitleScreen_update)(StateTitleScreen* self, StateManager& s, double dt);
-void __fastcall StateTitleScreen_update_H(StateTitleScreen* self, StateManager& s, double dt)
+$hook(void, StateTitleScreen, init, StateManager& s)
 {
-	StateTitleScreen_update(self, s, dt);
+	original(self, s);
 
-	if (!initializedA)
+	self->ui.viewportCallback = viewportCallbackFunc;
+	self->ui.viewportUser = s.window;
+	self->ui.window = s.window;
+
+	// notify user to check settings->keybinds
+	if (justInstalledMod)
 	{
-		glewExperimental = GL_TRUE;
-		glewInit();
-	
-		self->ui.viewportCallback = viewportCallbackFunc;
-		self->ui.viewportUser = s.window;
-		self->ui.window = s.window;
+		messageBox = gui::ContentBox{};
+		messageBox.width = 500;
+		messageBox.height = 250;
+		messageBox.parent = &self->ui;
+		messageBox.alignX(gui::ALIGN_CENTER_X);
+		messageBox.alignY(gui::ALIGN_CENTER_Y);
+		messageBox.offsetY(-2500);
 
-		// notify user to check settings->keybinds
-		if (justInstalledMod)
-		{
-			messageBox = gui::ContentBox{};
-			messageBox.width = 500;
-			messageBox.height = 250;
-			messageBox.parent = &self->ui;
-			messageBox.alignX(gui::ALIGN_CENTER_X);
-			messageBox.alignY(gui::ALIGN_CENTER_Y);
-			messageBox.offsetY(-2500);
+		messageBoxOk = gui::Button{};
+		messageBoxOk.width = 150;
+		messageBoxOk.height = 50;
+		messageBoxOk.text = "Ok";
+		messageBoxOk.alignX(gui::ALIGN_CENTER_X);
+		messageBoxOk.alignY(gui::ALIGN_BOTTOM);
+		messageBoxOk.offsetY(-20);
+		messageBoxOk.callback = messageBoxOkCallback;
 
-			messageBoxOk = gui::Button{};
-			messageBoxOk.width = 150;
-			messageBoxOk.height = 50;
-			messageBoxOk.text = "Ok";
-			messageBoxOk.alignX(gui::ALIGN_CENTER_X);
-			messageBoxOk.alignY(gui::ALIGN_BOTTOM);
-			messageBoxOk.offsetY(-20);
-			messageBoxOk.callback = messageBoxOkCallback;
+		messageBoxText = gui::Text{};
+		messageBoxText.text = "You've just installed the 4DKeyBinds mod!";
+		messageBoxText.size = 2;
+		messageBoxText.shadow = true;
+		messageBoxText.alignX(gui::ALIGN_CENTER_X);
+		messageBoxText.alignY(gui::ALIGN_TOP);
+		messageBoxText.offsetY(20);
+		messageBoxText.wrapWidth = 420;
 
-			messageBoxText = gui::Text{};
-			messageBoxText.text = "You've just installed the 4DKeyBinds mod!";
-			messageBoxText.size = 2;
-			messageBoxText.shadow = true;
-			messageBoxText.alignX(gui::ALIGN_CENTER_X);
-			messageBoxText.alignY(gui::ALIGN_TOP);
-			messageBoxText.offsetY(20);
-			messageBoxText.wrapWidth = 420;
+		messageBoxText2 = gui::Text{};
+		messageBoxText2.text = "You should check out the Settings for new keybinds.";
+		messageBoxText2.size = 2;
+		messageBoxText2.shadow = true;
+		messageBoxText2.alignX(gui::ALIGN_CENTER_X);
+		messageBoxText2.alignY(gui::ALIGN_TOP);
+		messageBoxText2.wrapWidth = 420;
+		messageBoxText2.offsetY(80);
 
-			messageBoxText2 = gui::Text{};
-			messageBoxText2.text = "You should check out the Settings for new keybinds.";
-			messageBoxText2.size = 2;
-			messageBoxText2.shadow = true;
-			messageBoxText2.alignX(gui::ALIGN_CENTER_X);
-			messageBoxText2.alignY(gui::ALIGN_TOP);
-			messageBoxText2.wrapWidth = 420;
-			messageBoxText2.offsetY(80);
+		messageBox.addElement(&messageBoxText);
+		messageBox.addElement(&messageBoxText2);
+		messageBox.addElement(&messageBoxOk);
 
-			messageBox.addElement(&messageBoxText);
-			messageBox.addElement(&messageBoxText2);
-			messageBox.addElement(&messageBoxOk);
+		self->ui.addElement(&messageBox);
 
-			self->ui.addElement(&messageBox);
-
-			animTime = -0.5;
-		}
-
-		initializedA = true;
+		animTime = -0.5;
 	}
+}
+
+$hook(void, StateTitleScreen, update, StateManager& s, double dt)
+{
+	original(self, s, dt);
+
 	if (justInstalledMod)
 	{
 		if ((animTime < 2.8 && !closing) || (animTime < 0.2 && closing))
@@ -824,64 +791,57 @@ void __fastcall StateTitleScreen_update_H(StateTitleScreen* self, StateManager& 
 	}
 }
 
-DWORD WINAPI Main_Thread(void* hModule)
-{
-	// Create console window if DEBUG_CONSOLE is defined
-#ifdef DEBUG_CONSOLE
-	AllocConsole();
-	FILE* fp;
-	freopen_s(&fp, "CONOUT$", "w", stdout);
-#endif
-	
-	glfwInit();
-	
+$exec
+{	
 	// patch out some bullshit code
 	{ 
+		uint64_t funcPlayerUpdate = getFuncAddr((int)Func::Player::update);
+		uint64_t funcPlayerKeyInput = getFuncAddr((int)Func::Player::keyInput);
 		// patch out shift/crouching check for q and e in Player::update
 		unsigned char newBytes[0x4];
 		memset(newBytes, 0x90, sizeof(newBytes));
-		patchMemory(FUNC_PLAYER_UPDATE + 0x1EC, newBytes, sizeof(newBytes));
+		patchMemory(funcPlayerUpdate + 0x1EC, newBytes, sizeof(newBytes));
 
 		unsigned char newBytes2[0x8];
 		memset(newBytes2, 0x90, sizeof(newBytes2));
-		patchMemory(FUNC_PLAYER_UPDATE + 0x4B0, newBytes2, sizeof(newBytes2));
+		patchMemory(funcPlayerUpdate + 0x4B0, newBytes2, sizeof(newBytes2));
 
 		// remove some shit code from Player::keyInput
 		// remove slot change cases
 		unsigned char newBytes4[0x1b];
 		memset(newBytes4, 0x90, sizeof(newBytes4));
-		patchMemory(FUNC_PLAYER_KEYINPUT + 0x2F1, newBytes4, sizeof(newBytes4));
-		patchMemory(FUNC_PLAYER_KEYINPUT + 0x2D1, newBytes4, sizeof(newBytes4));
-		patchMemory(FUNC_PLAYER_KEYINPUT + 0x311, newBytes4, sizeof(newBytes4));
-		patchMemory(FUNC_PLAYER_KEYINPUT + 0x331, newBytes4, sizeof(newBytes4));
-		patchMemory(FUNC_PLAYER_KEYINPUT + 0x34E, newBytes4, sizeof(newBytes4));
-		patchMemory(FUNC_PLAYER_KEYINPUT + 0x36B, newBytes4, sizeof(newBytes4));
-		patchMemory(FUNC_PLAYER_KEYINPUT + 0x388, newBytes4, sizeof(newBytes4));
+		patchMemory(funcPlayerKeyInput + 0x2F1, newBytes4, sizeof(newBytes4));
+		patchMemory(funcPlayerKeyInput + 0x2D1, newBytes4, sizeof(newBytes4));
+		patchMemory(funcPlayerKeyInput + 0x311, newBytes4, sizeof(newBytes4));
+		patchMemory(funcPlayerKeyInput + 0x331, newBytes4, sizeof(newBytes4));
+		patchMemory(funcPlayerKeyInput + 0x34E, newBytes4, sizeof(newBytes4));
+		patchMemory(funcPlayerKeyInput + 0x36B, newBytes4, sizeof(newBytes4));
+		patchMemory(funcPlayerKeyInput + 0x388, newBytes4, sizeof(newBytes4));
 
 		// remove inventory from E press
 		unsigned char newBytes5[0x95];
 		memset(newBytes5, 0x90, sizeof(newBytes5));
-		patchMemory(FUNC_PLAYER_KEYINPUT + 0x129, newBytes5, sizeof(newBytes5));
+		patchMemory(funcPlayerKeyInput + 0x129, newBytes5, sizeof(newBytes5));
 
 		// even more bs
 		unsigned char newBytes10[0x2c];
 		memset(newBytes10, 0x90, sizeof(newBytes10));
-		patchMemory(FUNC_PLAYER_KEYINPUT + 0x79, newBytes10, sizeof(newBytes10));
+		patchMemory(funcPlayerKeyInput + 0x79, newBytes10, sizeof(newBytes10));
 
 		unsigned char newBytes11[0x11];
 		memset(newBytes11, 0x90, sizeof(newBytes11));
-		patchMemory(FUNC_PLAYER_KEYINPUT + 0x113, newBytes11, sizeof(newBytes11));
+		patchMemory(funcPlayerKeyInput + 0x113, newBytes11, sizeof(newBytes11));
 
 		unsigned char newBytes12[0x12];
 		memset(newBytes12, 0x90, sizeof(newBytes12));
-		patchMemory(FUNC_PLAYER_KEYINPUT + 0x2AC, newBytes12, sizeof(newBytes12));
+		patchMemory(funcPlayerKeyInput + 0x2AC, newBytes12, sizeof(newBytes12));
 
 
 		// FIX FOR MOVEMENT!!!!
 		// remove else if (replace it with an if) in A and D movement
 		unsigned char newBytes13[0x2];
 		memset(newBytes13, 0x90, sizeof(newBytes13));
-		patchMemory(FUNC_PLAYER_UPDATE + 0x47B, newBytes13, sizeof(newBytes13));
+		patchMemory(funcPlayerUpdate + 0x47B, newBytes13, sizeof(newBytes13));
 	}
 
 	// load keybinds
@@ -903,26 +863,4 @@ DWORD WINAPI Main_Thread(void* hModule)
 			keyBinds = keybindsJson;
 		}
 	}
-
-	Hook(reinterpret_cast<void*>(FUNC_STATESETTINGS_INIT), reinterpret_cast<void*>(&StateSettings_init_H), reinterpret_cast<void**>(&StateSettings_init));
-	Hook(reinterpret_cast<void*>(FUNC_STATESETTINGS_RENDER), reinterpret_cast<void*>(&StateSettings_render_H), reinterpret_cast<void**>(&StateSettings_render));
-	Hook(reinterpret_cast<void*>(FUNC_STATETITLESCREEN_UPDATE), reinterpret_cast<void*>(&StateTitleScreen_update_H), reinterpret_cast<void**>(&StateTitleScreen_update));
-	
-	Hook(reinterpret_cast<void*>(FUNC_PLAYER_KEYINPUT), reinterpret_cast<void*>(&Player_keyInput_H), reinterpret_cast<void**>(&Player_keyInput));
-	Hook(reinterpret_cast<void*>(FUNC_STATEGAME_KEYINPUT), reinterpret_cast<void*>(&StateGame_keyInput_H), reinterpret_cast<void**>(&StateGame_keyInput));
-	Hook(reinterpret_cast<void*>(FUNC_STATETITLESCREEN_KEYINPUT), reinterpret_cast<void*>(&StateTitleScreen_keyInput_H), reinterpret_cast<void**>(&StateTitleScreen_keyInput));
-	Hook(reinterpret_cast<void*>(FUNC_GUI_TEXTINPUT_KEYINPUT), reinterpret_cast<void*>(&gui_TextInput_keyInput_H), reinterpret_cast<void**>(&gui_TextInput_keyInput));
-	// that address isnt in addresses.h yet. but its a function used directly in the glfwKeyCallback. and its called keyCallback lol
-	Hook(reinterpret_cast<void*>(base + idaOffsetFix(0x9E490)), reinterpret_cast<void*>(&keyInput_H), reinterpret_cast<void**>(&keyInput));
-
-	EnableHook(0);
-
-	return true;
-}
-
-BOOL APIENTRY DllMain(HMODULE hModule, DWORD _reason, LPVOID lpReserved)
-{
-	if (_reason == DLL_PROCESS_ATTACH)
-		CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)Main_Thread, hModule, 0, NULL);
-	return TRUE;
 }
