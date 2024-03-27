@@ -183,7 +183,8 @@ std::map<KeyBindsScope, std::map<std::string, std::vector<BindCallback>>> bindCa
 
 extern "C" _declspec(dllexport) void addBind(const std::string& bindName, int defaultKey, int scope, BindCallback callback)
 {
-	keyBinds[(KeyBindsScope)scope][bindName] = (Keys)defaultKey;
+	if(!keyBinds[(KeyBindsScope)scope].contains(bindName))
+		keyBinds[(KeyBindsScope)scope][bindName] = (Keys)defaultKey;
 	namesOrder[(KeyBindsScope)scope].push_back(bindName);
 	bindCallbacks[(KeyBindsScope)scope][bindName].push_back(callback);
 }
