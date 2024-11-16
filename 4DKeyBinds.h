@@ -178,7 +178,11 @@ namespace KeyBinds
 		if (!isLoaded())
 			return;
 
-		return reinterpret_cast<std::vector<std::pair<std::string, std::string>>(__stdcall*)(KeyBindsScope)>(GetProcAddress(fdm::getModHandle("tr1ngledev.4dkeybinds"), "getBinds"))
-			(scope);
+		std::vector<std::pair<std::string, std::string>> result{};
+
+		reinterpret_cast<void (__stdcall*)(KeyBindsScope, std::vector<std::pair<std::string, std::string>>*)>(GetProcAddress(fdm::getModHandle("tr1ngledev.4dkeybinds"), "getBinds"))
+			(scope, &result);
+
+		return result;
 	}
 }
