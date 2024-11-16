@@ -176,7 +176,7 @@ namespace KeyBinds
 	inline std::vector<std::pair<std::string, std::string>> getBinds(KeyBindsScope scope)
 	{
 		if (!isLoaded())
-			return;
+			return {};
 
 		std::vector<std::pair<std::string, std::string>> result{};
 
