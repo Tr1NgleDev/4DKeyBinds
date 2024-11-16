@@ -5,7 +5,7 @@
   description: "Mod that allows you to customize your keybinds!! \n \
 You can also use it as a dependency mod to add customizable binds to your mods!1!. \n \
 Also fixes stuff like Ctrl+R and AD movement",
-  version: "1.11",
+  version: "1.12",
   gameVersion: "0.2.1.4",
   modDLL: "4DKeyBinds.dll",
   externalDLLs: [

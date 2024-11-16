@@ -197,6 +197,18 @@ extern "C" _declspec(dllexport) void triggerBind(const std::string & bindName, i
 	for (const auto& callback : bindCallbacks[(KeyBindsScope)scope][bindName])
 		callback(nullptr, action, mods);
 }
+extern "C" _declspec(dllexport) std::vector<std::pair<std::string, std::string>> getBinds(KeyBindsScope scope)
+{
+	std::vector<std::pair<std::string, std::string>> result;
+	result.reserve(namesOrder[scope].size());
+
+	for (auto& bind : namesOrder[scope])
+	{
+		result.emplace_back(splitBindName(bind));
+	}
+
+	return result;
+}
 
 bool justInstalledMod = false;
 
